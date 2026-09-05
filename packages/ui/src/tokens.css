@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+/* Sous-ensemble "latin" uniquement -- couvre les accents francais (e, e, a, c...) */
+/* sans charger cyrillique/grec/vietnamien, inutiles ici (Doc 00-A S1, tolerance reseau Dakar) */
+@import "@fontsource/inter/latin-400.css";
+@import "@fontsource/inter/latin-500.css";
+@import "@fontsource/inter/latin-600.css";
+@import "@fontsource/inter/latin-700.css";
+@import "@fontsource/jetbrains-mono/latin-400.css";
+@import "@fontsource/jetbrains-mono/latin-500.css";
+/* Archivo -- grotesque a l'esprit signaletique routiere, reserve aux titres/nav
+   (--font-display) pour donner du caractere sans toucher a la lisibilite du
+   corps de texte, qui reste sur Inter. */
+@import "@fontsource/archivo/latin-600.css";
+@import "@fontsource/archivo/latin-700.css";
+
+/* Console de dispatch : encre nuit, papier froid, ambre "feu de piste".
+   Chaque --color-* ci-dessous genere automatiquement les utilitaires
+   Tailwind correspondants (bg-ink, text-accent, border-line, etc.). */
+@theme {
+  --color-ink: #14213d;
+  --color-ink-soft: #2a3b5c;
+  --color-paper: #f7f8fa;
+  --color-surface: #ffffff;
+  --color-line: #dfe3ea;
+  --color-accent: #e0862d;
+  --color-accent-soft: #fbe6ce;
+  --color-teal: #0e7c7b;
+  --color-teal-soft: #dcf0ef;
+  --color-success: #1e8e5a;
+  --color-warning: #e0862d;
+  --color-danger: #d64545;
+  --color-danger-soft: #fbe2e2;
+  --color-neutral: #5b6472;
+
+  --font-display: "Archivo", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
+
+/* Palettes de marque (Doc 04 §3, ecran "Configuration du tenant") -- ne
+   retintent que l'accent, jamais success/warning/danger qui doivent rester
+   des couleurs semantiques fixes quel que soit le theme choisi. Applique
+   via `document.documentElement.dataset.brand` (Layout.tsx) a partir de
+   `tenant.branding.theme`. "amber" est la valeur par defaut (deja definie
+   dans :root ci-dessus), pas besoin d'un bloc dedie. */
+:root[data-brand="cobalt"] {
+  --color-accent: #2e5aac;
+  --color-accent-soft: #dce6f7;
+}
+
+:root[data-brand="indigo"] {
+  --color-accent: #4f46c7;
+  --color-accent-soft: #e4e1fa;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
