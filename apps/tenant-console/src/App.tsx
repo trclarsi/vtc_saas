@@ -22,6 +22,9 @@ const VehiclesPage = lazy(() =>
 const VehicleDetailPage = lazy(() =>
   import("./modules/vehicles/VehicleDetailPage").then((m) => ({ default: m.VehicleDetailPage })),
 );
+const VehicleHistoryPage = lazy(() =>
+  import("./modules/vehicles/VehicleHistoryPage").then((m) => ({ default: m.VehicleHistoryPage })),
+);
 const ReservationsPage = lazy(() =>
   import("./modules/reservations/ReservationsPage").then((m) => ({ default: m.ReservationsPage })),
 );
@@ -63,6 +66,7 @@ export function App() {
           <Route path="/drivers/:id/history" element={<DriverHistoryPage />} />
           <Route path="/vehicles" element={<VehiclesPage />} />
           <Route path="/vehicles/:id" element={<VehicleDetailPage />} />
+          <Route path="/vehicles/:id/history" element={<VehicleHistoryPage />} />
           <Route path="/reservations" element={<ReservationsPage />} />
           <Route path="/reservations/:id" element={<ReservationDetailPage />} />
           <Route path="/users" element={<UsersPage />} />

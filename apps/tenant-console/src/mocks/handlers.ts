@@ -90,6 +90,13 @@ export const handlers = [
     const vehicle = vehicles.find((v) => v.id === params.id);
     return vehicle ? HttpResponse.json(vehicle) : new HttpResponse(null, { status: 404 });
   }),
+  http.patch(url("/vehicles/:id"), async ({ params, request }) => {
+    const vehicle = vehicles.find((v) => v.id === params.id);
+    if (!vehicle) return new HttpResponse(null, { status: 404 });
+    const patch = (await request.json()) as Partial<Vehicle>;
+    Object.assign(vehicle, patch, { updatedAt: now() });
+    return HttpResponse.json(vehicle);
+  }),
   http.post(url("/vehicles"), async ({ request }) => {
     const input = (await request.json()) as Pick<Vehicle, "plateNumber" | "brand" | "model">;
     const vehicle: Vehicle = {

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { CirclePlus } from "lucide-react";
+import { CirclePlus, List, LayoutGrid } from "lucide-react";
 import { useUrlFilters } from "../../shared/useUrlFilters";
 import { useBulkAction } from "../../shared/useBulkAction";
 import {
@@ -11,21 +11,24 @@ import {
   Button,
   Card,
   SearchInput,
+  Select,
   TableSkeleton,
-  FilterChip,
   ErrorState,
   BulkActionBar,
 } from "@vtc/ui";
 import type { Vehicle, VehicleStatus } from "@vtc/types";
 import { apiClient } from "../../api";
 import { VehicleCreateForm } from "./VehicleCreateForm";
+import { VehicleCard } from "./VehicleCard";
 import { filterVehicles } from "./filterVehicles";
 import { STATUS_LABELS } from "./vehicleLabels";
 import { VehicleRowActions } from "./VehicleRowActions";
 
+type ViewMode = "list" | "card";
+
 // Doc 04 §6 — gestion des véhicules
 const STATUS_FILTERS: { value: VehicleStatus | "all"; label: string }[] = [
-  { value: "all", label: "Tous" },
+  { value: "all", label: "Tous les statuts" },
   { value: "disponible", label: "Disponibles" },
   { value: "indisponible", label: "Indisponibles" },
   { value: "retire", label: "Retirés" },
@@ -37,6 +40,9 @@ export function VehiclesPage() {
     queryKey: ["vehicles"],
     queryFn: apiClient.vehicles.list,
   });
+  // Meme cache partage que DriversPage -- resout Vehicle.currentDriverId en
+  // nom d'affichage plutot que de laisser un id brut dans la colonne.
+  const { data: drivers } = useQuery({ queryKey: ["drivers"], queryFn: apiClient.drivers.list });
   const { query, setQuery, statusFilter, setStatusFilter } = useUrlFilters<VehicleStatus | "all">("all");
 
   const filtered = useMemo(
@@ -46,6 +52,7 @@ export function VehiclesPage() {
 
   const hasActiveFilter = query.length > 0 || statusFilter !== "all";
   const [formOpen, setFormOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   useEffect(() => {
@@ -92,15 +99,40 @@ export function VehiclesPage() {
           onChange={(e) => setQuery(e.target.value)}
           aria-label="Rechercher un véhicule"
         />
-        <div className="flex flex-wrap gap-2">
+        <Select
+          size="sm"
+          fullWidth={false}
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as VehicleStatus | "all")}
+          aria-label="Filtrer par statut"
+        >
           {STATUS_FILTERS.map((f) => (
-            <FilterChip
-              key={f.value}
-              label={f.label}
-              active={statusFilter === f.value}
-              onClick={() => setStatusFilter(f.value)}
-            />
+            <option key={f.value} value={f.value}>
+              {f.label}
+            </option>
           ))}
+        </Select>
+        <div className="ml-auto flex gap-1 rounded-lg border border-line p-0.5">
+          <button
+            onClick={() => setViewMode("list")}
+            aria-label="Vue liste"
+            aria-pressed={viewMode === "list"}
+            className={`rounded-md p-1.5 transition-colors ${
+              viewMode === "list" ? "bg-ink text-white" : "text-neutral hover:text-ink"
+            }`}
+          >
+            <List size={16} />
+          </button>
+          <button
+            onClick={() => setViewMode("card")}
+            aria-label="Vue carte"
+            aria-pressed={viewMode === "card"}
+            className={`rounded-md p-1.5 transition-colors ${
+              viewMode === "card" ? "bg-ink text-white" : "text-neutral hover:text-ink"
+            }`}
+          >
+            <LayoutGrid size={16} />
+          </button>
         </div>
       </div>
 
@@ -111,7 +143,7 @@ export function VehiclesPage() {
           <>
             <Button
               size="sm"
-              variant="secondary"
+              variant="inverse"
               disabled={eligibleToMakeAvailable.length === 0 || statusBulk.isPending}
               onClick={() => statusBulk.mutate(eligibleToMakeAvailable)}
               title={
@@ -124,7 +156,7 @@ export function VehiclesPage() {
             </Button>
             <Button
               size="sm"
-              variant="secondary"
+              variant="inverse"
               disabled={eligibleToMakeUnavailable.length === 0 || statusBulk.isPending}
               onClick={() => statusBulk.mutate(eligibleToMakeUnavailable)}
               title={
@@ -137,7 +169,7 @@ export function VehiclesPage() {
             </Button>
             <Button
               size="sm"
-              variant="secondary"
+              variant="dangerInverse"
               disabled={eligibleToRetire.length === 0 || retireBulk.isPending}
               onClick={() => retireBulk.mutate(eligibleToRetire)}
               title={
@@ -150,15 +182,51 @@ export function VehiclesPage() {
         }
       />
 
-      <Card>
-        {isError ? (
-          <ErrorState
-            title="Impossible de charger les véhicules"
-            onRetry={() => refetch()}
-          />
-        ) : isLoading ? (
+      {isError ? (
+        <Card>
+          <ErrorState title="Impossible de charger les véhicules" onRetry={() => refetch()} />
+        </Card>
+      ) : isLoading ? (
+        <Card>
           <TableSkeleton columns={4} />
+        </Card>
+      ) : viewMode === "card" ? (
+        filtered.length === 0 ? (
+          <Card>
+            <div className="flex flex-col items-center justify-center gap-1.5 px-4 py-14 text-center text-neutral">
+              <span className="font-display text-base font-semibold text-ink">
+                {hasActiveFilter ? "Aucun résultat" : "Aucun véhicule enregistré"}
+              </span>
+              <span>
+                {hasActiveFilter
+                  ? "Essayez une autre plaque, marque, modèle ou filtre."
+                  : "Ajoutez votre premier véhicule pour l'affecter à un chauffeur."}
+              </span>
+            </div>
+          </Card>
         ) : (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {filtered.map((vehicle) => (
+              <VehicleCard
+                key={vehicle.id}
+                vehicle={vehicle}
+                assignedDriver={drivers?.find((d) => d.id === vehicle.currentDriverId) ?? null}
+                selected={selectedIds.has(vehicle.id)}
+                onToggleSelect={() =>
+                  setSelectedIds((current) => {
+                    const next = new Set(current);
+                    if (next.has(vehicle.id)) next.delete(vehicle.id);
+                    else next.add(vehicle.id);
+                    return next;
+                  })
+                }
+                onClick={() => navigate(`/vehicles/${vehicle.id}`)}
+              />
+            ))}
+          </div>
+        )
+      ) : (
+        <Card>
           <DataTable<Vehicle>
             rows={filtered}
             selectedIds={selectedIds}
@@ -192,8 +260,10 @@ export function VehiclesPage() {
               },
               {
                 header: "Chauffeur affecté",
-                render: (v) => v.currentDriverId ?? "—",
-                mono: true,
+                render: (v) => {
+                  const driver = drivers?.find((d) => d.id === v.currentDriverId);
+                  return driver ? `${driver.firstName} ${driver.lastName}` : "—";
+                },
               },
               {
                 header: "Actions",
@@ -201,8 +271,8 @@ export function VehiclesPage() {
               },
             ]}
           />
-        )}
-      </Card>
+        </Card>
+      )}
     </div>
   );
 }

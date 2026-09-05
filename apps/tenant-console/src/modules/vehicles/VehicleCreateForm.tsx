@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Button, TextField, SlideOver, useToast } from "@vtc/ui";
+import { Button, TextField, Modal, useToast } from "@vtc/ui";
 import { apiClient } from "../../api";
 
 interface FormValues {
@@ -42,8 +42,22 @@ export function VehicleCreateForm({ open, onClose }: { open: boolean; onClose: (
   }
 
   return (
-    <SlideOver open={open} title="Ajouter un véhicule" onClose={onClose}>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+    <Modal
+      open={open}
+      title="Ajouter un véhicule"
+      onClose={onClose}
+      footer={
+        <>
+          <Button type="button" variant="ghost" onClick={onClose}>
+            Annuler
+          </Button>
+          <Button type="submit" form="vehicle-create-form" disabled={mutation.isPending}>
+            {mutation.isPending ? "Ajout en cours…" : "Ajouter le véhicule"}
+          </Button>
+        </>
+      }
+    >
+      <form id="vehicle-create-form" onSubmit={handleSubmit} className="flex flex-col gap-5">
         <TextField
           id="vehicle-plate"
           label="Immatriculation"
@@ -72,16 +86,7 @@ export function VehicleCreateForm({ open, onClose }: { open: boolean; onClose: (
             La création a échoué. Vérifiez la connexion et réessayez.
           </p>
         )}
-
-        <div className="mt-2 flex gap-2">
-          <Button type="submit" disabled={mutation.isPending}>
-            {mutation.isPending ? "Ajout en cours…" : "Ajouter le véhicule"}
-          </Button>
-          <Button type="button" variant="ghost" onClick={onClose}>
-            Annuler
-          </Button>
-        </div>
       </form>
-    </SlideOver>
+    </Modal>
   );
 }

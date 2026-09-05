@@ -10,6 +10,16 @@ export function createVehiclesResource(http: HttpClient) {
         method: "POST",
         body: JSON.stringify(input),
       }),
+    update: (
+      id: string,
+      input: Partial<
+        Pick<Vehicle, "plateNumber" | "brand" | "model" | "insuranceExpiresAt" | "inspectionExpiresAt">
+      >,
+    ) =>
+      http.request<Vehicle>(`/vehicles/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      }),
     // Doc 04 §6, regle 3 -- un vehicule "indisponible" ou "retire" ne peut pas etre affecte.
     updateStatus: (id: string, status: VehicleStatus) =>
       http.request<Vehicle>(`/vehicles/${id}/status`, {

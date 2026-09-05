@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, History } from "lucide-react";
@@ -11,6 +11,7 @@ import { DriverArchiveAction } from "./DriverArchiveAction";
 import { DriverAvatarUpload } from "./DriverAvatarUpload";
 import { DriverVehicleAssignment } from "./DriverVehicleAssignment";
 import { DocumentExpiry } from "../../shared/DocumentExpiry";
+import { EditableField } from "../../shared/EditableField";
 
 interface EditableValues {
   firstName: string;
@@ -34,56 +35,6 @@ function valuesFromDriver(driver: Driver): EditableValues {
     licenseNumber: driver.licenseNumber ?? "",
     licenseExpiresAt: toDateInputValue(driver.licenseExpiresAt),
   };
-}
-
-// Edition en ligne (clic sur la valeur -> champ modifiable -> "Enregistrer"
-// apparait des qu'un champ change) plutot qu'une modale separee -- retour
-// utilisateur explicite. Un seul "Enregistrer" pour tous les champs modifies
-// a la fois, pas un enregistrement par champ, pour eviter une rafale de
-// requetes PATCH au fil de la frappe.
-function EditableField({
-  label,
-  value,
-  onChange,
-  type = "text",
-  displayValue,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  type?: string;
-  // Rendu different en mode lecture (ex. pastille de statut coloree pour une
-  // echeance) -- l'edition reste sur la valeur brute, seul l'affichage change.
-  displayValue?: ReactNode;
-}) {
-  const [editing, setEditing] = useState(false);
-
-  return (
-    <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3 last:border-none">
-      <span className="font-mono text-[11px] uppercase tracking-wide text-neutral">{label}</span>
-      {editing ? (
-        <input
-          autoFocus
-          type={type}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onBlur={() => setEditing(false)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === "Escape") e.currentTarget.blur();
-          }}
-          className="w-56 rounded-lg border border-line bg-surface px-2 py-1 text-right text-sm text-ink focus:border-accent focus:outline-none"
-        />
-      ) : (
-        <button
-          type="button"
-          onClick={() => setEditing(true)}
-          className="rounded px-1.5 py-0.5 text-right text-sm text-ink transition-colors hover:bg-paper"
-        >
-          {displayValue ?? (value || <span className="text-neutral">Non renseigné</span>)}
-        </button>
-      )}
-    </div>
-  );
 }
 
 // Changement immediat, separe du gros formulaire d'edition -- une
