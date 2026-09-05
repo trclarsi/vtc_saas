@@ -9,7 +9,7 @@ import {
   Button,
   Card,
   TableSkeleton,
-  FilterChip,
+  Select,
   ErrorState,
   BulkActionBar,
 } from "@vtc/ui";
@@ -38,6 +38,10 @@ export function ReservationsPage() {
     queryKey: ["reservations"],
     queryFn: apiClient.reservations.list,
   });
+  // Meme cache partage que DriversPage/VehiclesPage -- pas de requete dediee,
+  // juste resoudre les ID en noms d'affichage.
+  const { data: drivers } = useQuery({ queryKey: ["drivers"], queryFn: apiClient.drivers.list });
+  const { data: vehicles } = useQuery({ queryKey: ["vehicles"], queryFn: apiClient.vehicles.list });
   const { statusFilter, setStatusFilter } = useUrlFilters<ReservationStatus | "all">("all");
   const timeZone = useTenantTimeZone();
 
@@ -80,14 +84,19 @@ export function ReservationsPage() {
       />
 
       <div className="mb-4 flex flex-wrap gap-2">
-        {STATUS_FILTERS.map((f) => (
-          <FilterChip
-            key={f.value}
-            label={f.label}
-            active={statusFilter === f.value}
-            onClick={() => setStatusFilter(f.value)}
-          />
-        ))}
+        <Select
+          size="sm"
+          fullWidth={false}
+          aria-label="Filtrer par statut"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as ReservationStatus | "all")}
+        >
+          {STATUS_FILTERS.map((f) => (
+            <option key={f.value} value={f.value}>
+              {f.label}
+            </option>
+          ))}
+        </Select>
       </div>
 
       <BulkActionBar
@@ -96,7 +105,7 @@ export function ReservationsPage() {
         actions={
           <Button
             size="sm"
-            variant="secondary"
+            variant="dangerInverse"
             disabled={eligibleToCancel.length === 0 || cancelBulk.isPending}
             onClick={() => cancelBulk.mutate(eligibleToCancel)}
             title={
@@ -137,8 +146,20 @@ export function ReservationsPage() {
                 mono: true,
                 sortKey: (r) => r.scheduledStart,
               },
-              { header: "Chauffeur", render: (r) => r.driverId ?? "Non affecté", mono: true },
-              { header: "Véhicule", render: (r) => r.vehicleId ?? "Non affecté", mono: true },
+              {
+                header: "Chauffeur",
+                render: (r) => {
+                  const driver = drivers?.find((d) => d.id === r.driverId);
+                  return driver ? `${driver.firstName} ${driver.lastName}` : "Non affecté";
+                },
+              },
+              {
+                header: "Véhicule",
+                render: (r) => {
+                  const vehicle = vehicles?.find((v) => v.id === r.vehicleId);
+                  return vehicle ? vehicle.plateNumber : "Non affecté";
+                },
+              },
               {
                 header: "Progression",
                 render: (r) => <WaypointTracker status={r.status} />,

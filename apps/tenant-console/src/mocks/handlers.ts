@@ -158,6 +158,29 @@ export const handlers = [
     reservation.updatedAt = now();
     return HttpResponse.json(reservation);
   }),
+  http.patch(url("/reservations/:id"), async ({ params, request }) => {
+    const reservation = reservations.find((r) => r.id === params.id);
+    if (!reservation) return new HttpResponse(null, { status: 404 });
+    const patch = (await request.json()) as Partial<Pick<Reservation, "scheduledStart" | "scheduledEnd">>;
+    Object.assign(reservation, patch, { updatedAt: now() });
+    return HttpResponse.json(reservation);
+  }),
+  http.patch(url("/reservations/:id/assign-driver"), async ({ params, request }) => {
+    const reservation = reservations.find((r) => r.id === params.id);
+    if (!reservation) return new HttpResponse(null, { status: 404 });
+    const { driverId } = (await request.json()) as { driverId: string | null };
+    reservation.driverId = driverId;
+    reservation.updatedAt = now();
+    return HttpResponse.json(reservation);
+  }),
+  http.patch(url("/reservations/:id/assign-vehicle"), async ({ params, request }) => {
+    const reservation = reservations.find((r) => r.id === params.id);
+    if (!reservation) return new HttpResponse(null, { status: 404 });
+    const { vehicleId } = (await request.json()) as { vehicleId: string | null };
+    reservation.vehicleId = vehicleId;
+    reservation.updatedAt = now();
+    return HttpResponse.json(reservation);
+  }),
 
   // --- Users (Doc 04 §4) ---
   http.get(url("/users/me"), () => {

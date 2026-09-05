@@ -898,6 +898,94 @@ ce correctif) pour rendre les types visibles au typecheck, pas seulement à l'ex
 - Le BOM UTF-8 ajouté pour Excel est correctement stripé par un décodage UTF-8 conforme
   (`readAsText`) — vérifié sur les octets bruts (`readAsArrayBuffer`), pas sur le texte redécodé.
 
+### Module Véhicules — parité avec le module Chauffeurs
+
+Repris systématiquement chaque amélioration faite côté Chauffeurs pour vérifier si elle
+s'appliquait aussi aux Véhicules (plan de travail temporaire : `docs/PLAN_TEMP_VEHICULES.md`,
+maintenant réversé ici et supprimé).
+
+**Bugs corrigés** :
+- Chauffeur affecté affiché en ID brut (`drv-1`) sur `VehiclesPage.tsx`/`VehicleDetailPage.tsx` —
+  résolu vers le nom.
+- Boutons de `BulkActionBar` invisibles sur fond sombre (`variant="secondary"`) — passés en
+  `inverse`/`dangerInverse`, même correctif que pour les Chauffeurs.
+- Filtres en chips (`FilterChip`) remplacés par le composant `Select` modernisé.
+
+**Vraies lacunes fonctionnelles comblées** :
+- Aucun moyen de réactiver un véhicule "Retiré" — même trou que l'archivage des chauffeurs avant
+  l'ajout de "Réactiver". Résolu deux fois : d'abord un bouton dédié "Remettre en service", puis
+  remplacé par le passage en `Select` (voir plus bas) qui couvre nativement ce cas.
+- Aucune édition possible après création (plaque/marque/modèle figés), ni des échéances
+  assurance/visite technique — édition en ligne ajoutée sur `VehicleDetailPage.tsx`, même pattern
+  que `DriverDetailPage.tsx`. `EditableField` (jusque-là une fonction locale à
+  `DriverDetailPage.tsx`) extrait en composant partagé `shared/EditableField.tsx` à cette
+  occasion, pour ne pas le dupliquer sur ce deuxième consommateur.
+- Assignation chauffeur ↔ véhicule unidirectionnelle (possible depuis la fiche chauffeur, pas
+  l'inverse) — `VehicleDriverAssignment.tsx` créé en miroir de `DriverVehicleAssignment.tsx`
+  (mêmes règles d'éligibilité : chauffeur validé, actif, pas déjà assigné ailleurs).
+- Pas de vue carte sur `VehiclesPage.tsx` — `VehicleCard.tsx` ajouté (miroir de `DriverCard`,
+  pictogramme `Car` à la place d'une photo, la photo véhicule restant différée).
+- Pas d'historique des courses du véhicule (`Reservation.vehicleId` existait déjà, inexploité) —
+  `VehicleHistoryPage.tsx` créée (miroir de `DriverHistoryPage.tsx`), route
+  `/vehicles/:id/history`, export CSV identique.
+
+**Questions ouvertes tranchées** : les deux écarts de cohérence relevés pendant l'audit ont été
+alignés sur le comportement Chauffeurs.
+- `VehicleCreateForm.tsx` : `SlideOver` → `Modal` centrée (même structure que
+  `DriverCreateForm.tsx`, footer Annuler/Ajouter, formulaire lié par `form=`).
+- `VehicleRowActions.tsx` : boutons dédiés ("Marquer disponible/indisponible/Retirer") remplacés
+  par un `Select` à effet immédiat, même logique que `AvailabilityField`. Le cas "Retiré →
+  remettre en service" est désormais couvert par ce même menu, sans bouton dédié.
+
+Vérifié à chaque étape : typecheck + suite de tests + build, puis vérification manuelle dans le
+navigateur (y compris via navigation SPA pour éviter le faux positif de perte de données au
+rechargement complet, déjà documenté plus haut pour le module Chauffeurs).
+
+### Module Réservations — parité avec Chauffeurs/Véhicules
+
+Même exercice pour le dernier module de données (plan de travail temporaire :
+`docs/PLAN_TEMP_RESERVATIONS.md`, maintenant réversé ici et supprimé).
+
+**Bugs corrigés** :
+- Chauffeur/véhicule affichés en ID brut (`drv-1`, `veh-3`) sur `ReservationsPage.tsx` (colonnes)
+  et `ReservationDetailPage.tsx` — résolus vers le nom (lien conservé sur la fiche détail).
+- Bouton "Annuler" du `BulkActionBar` invisible sur fond sombre — passé en `dangerInverse`
+  (action destructrice, même traitement que "Retirer" côté Véhicules).
+- Filtres en chips remplacés par `Select`.
+
+**Vraies lacunes fonctionnelles comblées** :
+- Aucune assignation chauffeur/véhicule depuis la fiche réservation quand "Non affecté" —
+  l'api-client des réservations n'exposait que `list`/`get`/`cancel`. Ajout de
+  `assignDriver`/`assignVehicle` (endpoints mock dédiés) et de
+  `ReservationDriverAssignment.tsx`/`ReservationVehicleAssignment.tsx`, miroirs de
+  `DriverVehicleAssignment`/`VehicleDriverAssignment` — sans la contrainte d'exclusivité de ces
+  derniers, un chauffeur ou un véhicule pouvant légitimement avoir plusieurs réservations à des
+  créneaux différents.
+- Aucune reprogrammation possible (`scheduledStart`/`scheduledEnd` figés après création) — édition
+  en ligne (`EditableField`, `type="datetime-local"`) ajoutée sur `ReservationDetailPage.tsx`,
+  disponible seulement tant que la réservation est "planifiée" ou "confirmée" (même règle
+  d'éligibilité que l'annulation). Validation cliente : l'arrivée doit rester après le départ.
+
+  **Piège traité explicitement** : un `<input type="datetime-local">` raisonne dans le fuseau
+  horaire du *navigateur*, pas celui configuré pour le tenant (`formatDateTime.ts` affiche déjà
+  tout dans ce fuseau ailleurs dans l'app) — les convertir naïvement aurait décalé l'heure affichée
+  d'un dispatcher dans un autre fuseau que celui du tenant. Nouvel helper
+  `shared/tzDateTimeInput.ts` (`isoToTzInputValue`/`tzInputValueToIso`) qui calcule le décalage
+  réel du fuseau cible pour la date concernée (gère le changement heure d'été/hiver) plutôt que de
+  supposer un décalage fixe. Testé (`tzDateTimeInput.test.ts`) : conversion vers un fuseau à heure
+  d'été, aller-retour ISO → saisie → ISO sur plusieurs fuseaux et plusieurs saisons.
+
+**Pas des manques (limitations déjà connues, pas des bugs)** :
+- Le passager (`passengerUserId`, ex. `pax-1`) reste non résolu en nom : ces identifiants ne
+  correspondent à aucun utilisateur de la liste des Users du tenant (réservée au staff) — aucune
+  donnée disponible côté mock pour l'afficher autrement.
+- Le bouton "Nouvelle réservation" reste désactivé, cause déjà documentée en Partie 4 ci-dessus
+  (sélection de passager impossible sans endpoint dédié côté backend).
+
+Vérifié à chaque étape : typecheck + suite de tests (dont les 3 nouveaux tests du fuseau horaire)
++ build, puis vérification manuelle dans le navigateur (résolution des noms, sélecteur de statut,
+assignation chauffeur, reprogrammation avec persistance confirmée après navigation SPA).
+
 ## Principe directeur
 
 Ne jamais ajouter une affordance qui ne fait rien (bouton, lien, animation qui suggère une action sans effet réel) — cohérent avec le principe déjà appliqué au reste du projet : documenter honnêtement ce qui est fait vs différé, plutôt que de simuler une fonctionnalité absente.
